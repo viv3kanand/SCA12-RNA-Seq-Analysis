@@ -9,3 +9,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+### Required packages
+```{r, include=FALSE, warning=FALSE, message=FALSE}
+require(DESeq2)
+```
+
+### Load DGE data from tximport
+```{r}
+source("../scripts/tximport.R")
+
+gse <- tximport(dir="../data/salmon", txdf="../data/txdf.csv", DTE=FALSE)
+```
+
