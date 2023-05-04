@@ -14,6 +14,7 @@ tximport = function(dir, txdf, DTE=TRUE){
   }
   else {
     txi <- tximport(files, type = "salmon", tx2gene = txdf, countsFromAbundance = "lengthScaledTPM")
+    # alternative usage -> tximport::summarizeToGene(txi, txdf, countsFromAbundance = "lengthScaledTPM")
   }
   
   coldata <- data.frame(names = names(files),
