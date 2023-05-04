@@ -10,10 +10,10 @@ tximport = function(dir, txdf, DTE=TRUE){
   }
   
   if(DTE){
-    txi <- tximport(files, type = "salmon", tx2gene = txdf, txOut = TRUE, )
+    txi <- tximport(files, type = "salmon", tx2gene = txdf, txOut = TRUE)
   }
   else {
-    txi <- tximport(files, type = "salmon", tx2gene = txdf)
+    txi <- tximport(files, type = "salmon", tx2gene = txdf, countsFromAbundance = "lengthScaledTPM")
   }
   
   coldata <- data.frame(names = names(files),
