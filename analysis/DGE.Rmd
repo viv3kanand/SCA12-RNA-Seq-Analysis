@@ -18,26 +18,15 @@ require(DESeq2)
 ```{r}
 source("../scripts/tximport.R")
 
-dir = "/home/rstudio/SCA12_paper/data/salmon"
+dir = "../data/salmon"
 
-gse <- tximport(dir=dir, coldata=coldata, txdf="../data/txdf.csv", DTE=FALSE)
+samples <- read.csv("../data/metadata.csv", header = TRUE)
+
+gse <- tximport(dir=dir, coldata=samples, txdf="../data/txdf.csv", DTE=FALSE)
+
+saveRDS(gse,"RData/gse.rds")
 ```
 
-### Setup metadata
-```{r}
-samples <- read.csv("/home/rstudio/SCA12_paper/data/metadata.csv", header = TRUE)
-
-files <- file.path(dir,list.files(dir),"quant.sf")
-names(files) <- list.files(dir)
-
-coldata <- merge(x = data.frame(names = names(files),
-                                files = files), 
-                 y = samples,
-                 by.x = "names", by.y = "Sample", 
-                 all=TRUE, sort = FALSE) %>%
-  unite(Design, c("Condition", "Cell_line"), remove = FALSE)
-
-```
 
 ### DGE
 ```{r}
@@ -86,6 +75,12 @@ lapply(gse_list, function(se){
   output = list("res" = res, "dds" = dds, "vst" = mat)
   return(output)
   
-}) -> gse_dds
+}) -> gse_out
 ```
+
+
+
+
+
+
 

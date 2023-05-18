@@ -1,0 +1,89 @@
+---
+title: "DTE"
+author: "viv3kanand"
+date: "2023-05-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Required packages
+
+```{r, include=FALSE, warning=FALSE, message=FALSE}
+require(fishpond)
+```
+
+### Load DGE data from tximport
+
+```{r}
+source("../scripts/tximport.R")
+
+dir = "../data/salmon"
+
+samples <- read.csv("../data/metadata.csv", header = TRUE)
+
+se <- tximport(dir=dir, coldata=samples, txdf="../data/txdf.csv", DTE=TRUE)
+
+saveRDS(se,"RData/gse.rds")
+```
+
+### Batch correction and prepare samples as cell_lines
+
+```{r}
+mm <- model.matrix(~ Sex + Design, colData(se))
+
+infRepIdx <- grep("infRep",assayNames(se),value=TRUE)
+nreps <- length(infRepIdx)
+
+pc <- .1
+for (k in seq_len(nreps)) {
+  logInfRep <- log(assay(se, infRepIdx[k]) + pc)
+  logInfRep <- limma::removeBatchEffect(
+                        logInfRep,
+                        batch=colData(se)$Batch,
+                        design=mm)
+  assay(se, infRepIdx[k]) <- exp(logInfRep)
+}
+
+se_list <- list("iPSC" = se[,se$Cell_line == "iPSC"],
+                   "NSC" = se[,se$Cell_line == "NSC"],
+                   "NEU" = se[,se$Cell_line == "Neuron"])
+
+```
+
+### DTE - Fishpond
+```{r}
+
+lapply(se_list, function(se){
+  se$Condition <- relevel(se$Condition, ref = "Control")
+  y <- scaleInfReps(se)
+  y <- labelKeep(y)
+  y <- y[ mcols(y)$keep, ]
+  set.seed(666)
+  y <- swish(y,
+           x="Condition",
+           nperms=30)
+}) -> se_out
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
