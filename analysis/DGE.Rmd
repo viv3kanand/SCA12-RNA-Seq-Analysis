@@ -18,6 +18,74 @@ require(DESeq2)
 ```{r}
 source("../scripts/tximport.R")
 
-gse <- tximport(dir="../data/salmon", txdf="../data/txdf.csv", DTE=FALSE)
+dir = "/home/rstudio/SCA12_paper/data/salmon"
+
+gse <- tximport(dir=dir, coldata=coldata, txdf="../data/txdf.csv", DTE=FALSE)
+```
+
+### Setup metadata
+```{r}
+samples <- read.csv("/home/rstudio/SCA12_paper/data/metadata.csv", header = TRUE)
+
+files <- file.path(dir,list.files(dir),"quant.sf")
+names(files) <- list.files(dir)
+
+coldata <- merge(x = data.frame(names = names(files),
+                                files = files), 
+                 y = samples,
+                 by.x = "names", by.y = "Sample", 
+                 all=TRUE, sort = FALSE) %>%
+  unite(Design, c("Condition", "Cell_line"), remove = FALSE)
+
+```
+
+### DGE
+```{r}
+gse_list <- list("iPSC" = gse[,gse$Cell_line == "iPSC"],
+              "NSC" = gse[,gse$Cell_line == "NSC"],
+              "NEU" = gse[,gse$Cell_line == "Neuron"])
+
+
+lapply(gse_list, function(se){
+  
+  if (length(unique(colData(se)$Batch)) > 1) {
+    se$Condition <- relevel(se$Condition, ref = "Control")
+    dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
+                              colData = colData(se),
+                              design = ~ Batch + Sex + Condition)
+  }
+  else {
+    se$Condition <- relevel(se$Condition, ref = "Control")
+    dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
+                              colData = colData(se),
+                              design = ~ Sex + Condition)
+  }
+  
+  keep <- rowSums(counts(dds) >= 5) >= 3
+  table(keep)
+  dds <- dds[keep,]
+  
+  register(MulticoreParam(40))
+  
+  suppressWarnings(dds <- DESeq(dds, parallel = T))
+  
+  if (length(unique(colData(se)$Batch)) > 1) {
+    vst <- vst(dds, blind=FALSE)
+    mat <- assay(vst)
+    mm <- model.matrix(~ Sex + Condition, colData(se))
+    mat <- limma::removeBatchEffect(mat, batch=vst$Batch, design=mm) %>% as.data.frame
+  }
+  else {
+    vst <- vst(dds, blind=FALSE)
+    mat <- assay(vst)
+  }
+  
+  res <- lfcShrink(dds, coef = "Condition_Diseased_vs_Control", type = "apeglm", parallel = TRUE) %>% as.data.frame() %>%
+    tibble::rownames_to_column("ID")
+  
+  output = list("res" = res, "dds" = dds, "vst" = mat)
+  return(output)
+  
+}) -> gse_dds
 ```
 
