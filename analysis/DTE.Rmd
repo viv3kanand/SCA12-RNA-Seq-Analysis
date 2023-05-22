@@ -32,6 +32,8 @@ saveRDS(se,"RData/gse.rds")
 ### Batch correction and prepare samples as cell_lines
 
 ```{r}
+se <- readRDS("RData/se.rds")
+
 mm <- model.matrix(~ Sex + Design, colData(se))
 
 infRepIdx <- grep("infRep",assayNames(se),value=TRUE)
@@ -53,9 +55,20 @@ se_list <- list("iPSC" = se[,se$Cell_line == "iPSC"],
 
 ```
 
-### DTE - Fishpond
+### DTE - Fishpond - Interaction design on Cell types
 ```{r}
+dti <- scaleInfReps(se)
+dti <- labelKeep(dti)
+dti <- dti[ mcols(dti)$keep, ]
+set.seed(666)
+dti <- swish(dti,
+         x="Condition", 
+         cov = "Cell_line",
+         nperms=30)
 
+```
+### DTE - Fishpond - Subset analysis for each Cell types
+```{r}
 lapply(se_list, function(se){
   se$Condition <- relevel(se$Condition, ref = "Control")
   y <- scaleInfReps(se)
@@ -66,10 +79,19 @@ lapply(se_list, function(se){
            x="Condition",
            nperms=30)
 }) -> se_out
-
 ```
 
+### Data for SRA
+```{r}
+#Transcript abundance and counts
+write.csv(as.data.frame(assay(se, "abundance")), file = paste0("results/", Sys.Date(),"_SRA_abundance_tx.csv"))
+write.csv(as.data.frame(assay(se, "counts")), file = paste0("results/", Sys.Date(),"_SRA_counts_tx.csv"))
 
+#Gene abundance and counts
+write.csv(as.data.frame(assay(gse, "abundance")), file = paste0("results/", Sys.Date(),"_SRA_abundance_gene.csv"))
+write.csv(as.data.frame(assay(gse, "counts")), file = paste0("results/", Sys.Date(),"_SRA_counts_gene.csv"))
+
+```
 
 
 

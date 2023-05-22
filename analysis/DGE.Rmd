@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Required packages
 ```{r, include=FALSE, warning=FALSE, message=FALSE}
 require(DESeq2)
+require(tidyverse)
+BiocParallel::register(BiocParallel::MulticoreParam(40))
 ```
 
 ### Load DGE data from tximport
@@ -27,9 +29,10 @@ gse <- tximport(dir=dir, coldata=samples, txdf="../data/txdf.csv", DTE=FALSE)
 saveRDS(gse,"RData/gse.rds")
 ```
 
-
 ### DGE
 ```{r}
+gse <- readRDS("RData/gse.rds")
+
 gse_list <- list("iPSC" = gse[,gse$Cell_line == "iPSC"],
               "NSC" = gse[,gse$Cell_line == "NSC"],
               "NEU" = gse[,gse$Cell_line == "Neuron"])
@@ -54,9 +57,10 @@ lapply(gse_list, function(se){
   table(keep)
   dds <- dds[keep,]
   
-  register(MulticoreParam(40))
   
-  suppressWarnings(dds <- DESeq(dds, parallel = T))
+  suppressWarnings(dds <- DESeq(dds, 
+                                parallel = TRUE, 
+                                BPPARAM=BiocParallel::MulticoreParam(40)))
   
   if (length(unique(colData(se)$Batch)) > 1) {
     vst <- vst(dds, blind=FALSE)
@@ -69,7 +73,11 @@ lapply(gse_list, function(se){
     mat <- assay(vst)
   }
   
-  res <- lfcShrink(dds, coef = "Condition_Diseased_vs_Control", type = "apeglm", parallel = TRUE) %>% as.data.frame() %>%
+  res <- lfcShrink(dds, 
+                   coef = "Condition_Diseased_vs_Control", 
+                   type = "apeglm", parallel = TRUE, 
+                   BPPARAM=BiocParallel::MulticoreParam(40)) %>% 
+    as.data.frame() %>%
     tibble::rownames_to_column("ID")
   
   output = list("res" = res, "dds" = dds, "vst" = mat)
@@ -77,6 +85,36 @@ lapply(gse_list, function(se){
   
 }) -> gse_out
 ```
+
+
+### Create vst for Visualization
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = round(assays(gse)[["counts"]]),
+                              colData = colData(gse),
+                              design = ~ Batch + Sex + Condition)
+
+keep <- rowSums(counts(dds) >= 5) >= 3
+table(keep)
+dds <- dds[keep,]
+
+suppressWarnings(dds <- DESeq(dds, parallel = TRUE, BPPARAM = BiocParallel::MulticoreParam(40)))
+
+vst <- vst(dds, blind=FALSE)
+mat <- assay(vst)
+mm <- model.matrix(~ Sex + Condition, colData(gse))
+mat <- limma::removeBatchEffect(mat, batch=vst$Batch, design=mm) %>% as.data.frame
+
+saveRDS(mat, "RData/vst_bc.rds")
+```
+
+
+
+
+
+
+
+
+
 
 
 
