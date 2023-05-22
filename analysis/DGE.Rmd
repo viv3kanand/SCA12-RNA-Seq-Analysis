@@ -40,17 +40,29 @@ gse_list <- list("iPSC" = gse[,gse$Cell_line == "iPSC"],
 
 lapply(gse_list, function(se){
   
-  if (length(unique(colData(se)$Batch)) > 1) {
+  if (length(unique(colData(se)$Batch)) > 1 & length(unique(colData(se)$Sex)) > 1) {
     se$Condition <- relevel(se$Condition, ref = "Control")
     dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
                               colData = colData(se),
                               design = ~ Batch + Sex + Condition)
   }
-  else {
+  else if (length(unique(colData(se)$Batch)) > 1 & length(unique(colData(se)$Sex)) < 1) {
+    se$Condition <- relevel(se$Condition, ref = "Control")
+    dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
+                              colData = colData(se),
+                              design = ~ Batch + Condition)
+  }
+  else if (length(unique(colData(se)$Batch)) < 1 & length(unique(colData(se)$Sex)) > 1) {
     se$Condition <- relevel(se$Condition, ref = "Control")
     dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
                               colData = colData(se),
                               design = ~ Sex + Condition)
+  }
+  else {
+    se$Condition <- relevel(se$Condition, ref = "Control")
+    dds <- DESeqDataSetFromMatrix(countData = round(assays(se)[["counts"]]),
+                              colData = colData(se),
+                              design = ~ Condition)
   }
   
   keep <- rowSums(counts(dds) >= 5) >= 3
@@ -84,6 +96,8 @@ lapply(gse_list, function(se){
   return(output)
   
 }) -> gse_out
+
+saveRDS(gse_out, file = "RData/gse_out.rds")
 ```
 
 

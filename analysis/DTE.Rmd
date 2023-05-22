@@ -55,7 +55,8 @@ se_list <- list("iPSC" = se[,se$Cell_line == "iPSC"],
 
 ```
 
-### DTE - Fishpond - Interaction design on Cell types
+### DTE - Fishpond - Interactive design on Cell types
+
 ```{r}
 dti <- scaleInfReps(se)
 dti <- labelKeep(dti)
@@ -79,6 +80,8 @@ lapply(se_list, function(se){
            x="Condition",
            nperms=30)
 }) -> se_out
+
+saveRDS(se_out, file = "RData/se_out.rds")
 ```
 
 ### Data for SRA
