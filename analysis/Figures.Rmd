@@ -15,9 +15,48 @@ require(ggpubr)
 require(tidyverse)
 ```
 
-
 ### Load datasets
 ```{r}
+source("../scripts/helper_scripts.R")
 
+se <- readRDS("RData/se.rds")
+gse <- readRDS("RData/gse.rds")
+se_out <- readRDS("RData/se_out.rds")
+gse_out <- readRDS("RData/gse_out.rds")
+dds <- readRDS("RData/dds.rds")
+vst_mat <- readRDS("RData/vst_bc.rds")
 ```
+
+### PCA
+```{r}
+pca <- call_PCA(vst_mat)
+
+percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
+
+ggplot(PC_df, aes(x=PC1, y=PC2, col=Group)) + 
+  geom_point() + 
+  geom_text(aes(label = Group), hjust=0, vjust=0) +
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  coord_fixed()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

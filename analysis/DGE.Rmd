@@ -13,12 +13,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE, warning=FALSE, message=FALSE}
 require(DESeq2)
 require(tidyverse)
-BiocParallel::register(BiocParallel::MulticoreParam(40))
 ```
 
 ### Load DGE data from tximport
 ```{r}
-source("../scripts/tximport.R")
+source("../scripts/helper_scripts.R")
 
 dir = "../data/salmon"
 
@@ -118,9 +117,11 @@ mat <- assay(vst)
 mm <- model.matrix(~ Sex + Condition, colData(gse))
 mat <- limma::removeBatchEffect(mat, batch=vst$Batch, design=mm) %>% as.data.frame
 
+assay(vst)
+
+saveRDS(dds, "RData/dds.rds")
 saveRDS(mat, "RData/vst_bc.rds")
 ```
-
 
 
 
