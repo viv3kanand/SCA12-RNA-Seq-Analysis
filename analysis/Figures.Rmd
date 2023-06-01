@@ -33,41 +33,47 @@ vst_mat <- readRDS("RData/vst_bc.rds")
 ### PCA of Batch effect corrected and uncorrected samples
 ```{r}
 li <- list("Uncorrected" = dds, "Corrected" = vst_mat)
-purrr::imap(li, function(obj, name){
-  if (name == "Uncorrected"){
-    call_PCA(obj) %>% 
-      augment(as.data.frame(colData(dds))) %>%
-      ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
-      geom_point(size = 3) + 
-      geom_text(aes(label = Batch), hjust=0, vjust=0) +
-      xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-      ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-      coord_fixed() -> P1
-    }
-  else {
-    call_PCA(obj) %>% 
-      augment(as.data.frame(colData(dds))) %>%
-      ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
-      geom_point(size = 3) + 
-      geom_text(aes(label = Batch), hjust=0, vjust=0) +
-      xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-      ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-      coord_fixed() -> P2
-    }
-  P1 + P2
-  })
 
-pca <- call_PCA(vst_mat)
+plot_list <- list()
 
-percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
+
+# PCA plot
+plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
+  pca_result <- call_PCA(obj)
+  p <- pca_result$pca %>% 
+    augment(as.data.frame(colData(dds))) %>%
+    ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
+    geom_point(size = 3) + 
+    geom_text(aes(label = Batch), hjust=0, vjust=0) +
+    xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
+    ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
+    coord_fixed()
+
+  return(p)
+})
+
 
 # Scree plot
-data.frame(Components = paste0("PC",seq_len(5)), 
-           value = percentVar[1:5]) %>% 
-  ggplot(aes(x = Components, y = value)) + 
-  geom_col(fill = "#b6dfe2") + 
-  ylab("% of total variance")
+plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
+  pca_result <- call_PCA(obj)
+  p <- data.frame(Components = paste0("PC",seq_len(5)), 
+           value = pca_result$percentVar[1:5]) %>%
+    ggplot(aes(x = Components, y = value)) + 
+    geom_col(fill = "#b6dfe2") + 
+    ylab("% of total variance")
+  
+  return(p)
+})
 
+
+# plot PCA
+do.call("wrap_plots", c(plot_list$pca, ncol = 2))
+
+# plot scree
+do.call("wrap_plots", c(plot_list$scree, ncol = 2))
+
+# merged plots
+do.call("wrap_plots", c(unlist(plot_list, recursive = FALSE), ncol = 2, nrow = 2))
 ```
 
 ### 

@@ -69,7 +69,9 @@ call_PCA <- function(x, ntop=500){
   select = order(rv, decreasing=TRUE)[seq_len(ntop)]
   
   pca <- prcomp(t(y[select,]), center = TRUE, scale. = FALSE)
-  return(pca)
+  percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
+  
+  return(list("pca" = pca, "percentVar" = percentVar))
 }
 
 
