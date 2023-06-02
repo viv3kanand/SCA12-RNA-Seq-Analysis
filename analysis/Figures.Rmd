@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 require(ggplot2)
 require(ggpubr)
 require(tidyverse)
-require(patchwork)
+require(paletteer)
 ```
 
 ### Load datasets
@@ -31,15 +31,43 @@ vst_mat <- readRDS("RData/vst_bc.rds")
 
 ### Custom theme to apply
 ```{r}
-custom_theme <- function(){ 
-  theme_bw() +
-  theme(axis.title = element_text(size = rel(1.25)),
-        axis.text = element_text(size = rel(1.15)),
-        plot.title = element_text(size = rel(1.5),
-                                  hjust = 0.5),
-        panel.grid = element_blank(),
-        legend.position = "none")
-  }
+# Theme elements
+font <- "Helvetica"
+text_size <- 10
+line_size <- 0.5
+
+# Figure elements
+res <- 300
+full_width <- 8.5
+full_height <- 13
+meas_units <- "in"
+output_filetype <- "svg"
+fig_lab_size <- 9
+fig_lab_pos_x <- 0
+fig_lab_pos_y <- 1
+label_type <- "AUTO"
+
+custom_theme <- function(){
+  theme_classic() +
+    theme(text = element_text(family = font,
+                              size = text_size),
+          line = element_line(linewidth = line_size),
+          axis.title = element_text(size = rel(1.25)),
+          axis.text = element_text(size = rel(1.15)),
+          plot.title = element_text(size = rel(1.5),
+                                    hjust = 0.5),
+          panel.grid = element_blank(),
+          legend.position = "right",
+          legend.text=element_text(size=text_size))
+}
+
+
+
+
+palette1 <- c("#E64B35FF", "#417839FF")
+palette2 <- c("#FF3D7FFF", "#3FB8AFFF")
+palette3 <- c("#3A488AFF", "#BE3428FF") # paletteer_d("lisa::OskarSchlemmer")
+palette4 <- c("#CF597EFF", "#009392FF") # paletteer_d("rcartocolor::Temps")
 ```
 
 
@@ -62,6 +90,7 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
     xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
     coord_fixed() +
+    scale_color_manual(name = "Condition", values = palette4) +
     custom_theme()
 
   return(p)
@@ -74,7 +103,7 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
   p <- data.frame(Components = paste0("PC",seq_len(5)), 
            value = pca_result$percentVar[1:5]) %>%
     ggplot(aes(x = Components, y = value)) + 
-    geom_col(fill = "#b6dfe2") + 
+    geom_col(fill = "#009392FF", width = 0.5) + 
     ggtitle(name) +
     ylab("% of total variance") + 
     scale_y_continuous(labels = scales::percent_format(),
