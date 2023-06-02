@@ -12,9 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load packages
 ```{r}
 require(ggplot2)
-require(ggpubr)
+require(cowplot)
 require(tidyverse)
 require(paletteer)
+require(broom)
 ```
 
 ### Load datasets
@@ -75,14 +76,15 @@ palette4 <- c("#CF597EFF", "#009392FF") # paletteer_d("rcartocolor::Temps")
 ```{r}
 li <- list("Uncorrected" = dds, "Corrected" = vst_mat)
 
-plot_list <- list()
+coldata <- colData(dds) %>% as.data.frame()
 
+plot_list <- list()
 
 # PCA plot
 plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
   pca_result <- call_PCA(obj)
   p <- pca_result$pca %>% 
-    augment(as.data.frame(colData(dds))) %>%
+    augment(coldata) %>%
     ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
     geom_point(size = 3) + 
     geom_text(aes(label = Batch), hjust=0, vjust=0) +
@@ -90,6 +92,7 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
     xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
     coord_fixed() +
+    labs(shape="Cell line", colour="Condition") +
     scale_color_manual(name = "Condition", values = palette4) +
     custom_theme()
 
@@ -113,19 +116,41 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
   return(p)
 })
 
+row1 <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
+                           plot_list$pca$Corrected + theme(legend.position="none"),
+                           align="hv")
 
-# plot PCA
-do.call("wrap_plots", c(plot_list$pca, ncol = 2))
+legend1 <- get_legend(
+  plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
+)
 
-# plot scree
-do.call("wrap_plots", c(plot_list$scree, ncol = 2))
+plot_grid(row1, legend1, rel_widths = c(2, .4))
 
-# merged plots
-do.call("wrap_plots", c(unlist(plot_list, recursive = FALSE), ncol = 2, nrow = 2))
 ```
 
-### 
+### Heatmap
 ```{r}
+# Neuron
+gene_list <- gse_out$NEU$res %>% 
+  filter(abs(log2FoldChange) > 2 & padj < 0.01) %>% 
+  pull("ID")
+
+mat <- gse_out$NEU$vst[rownames(gse_out$NEU$vst) %in% gene_list,]
+
+meta <- colData(gse[,gse$Cell_line == "Neuron"]) %>% as.data.frame()
+
+heatmap_palette <- paletteer_d("rcartocolor::Temps")
+
+ann_colors <- list(Condition = c(Control = "#009392FF", Patient = "#CF597EFF"))
+
+pheatmap(mat, 
+         color = heatmap_palette,
+         annotation_col = meta %>% select(Condition),
+         annotation_colors = ann_colors,
+         show_colnames = F, 
+         show_rownames = F,
+         scale="row")
+
 
 ```
 
