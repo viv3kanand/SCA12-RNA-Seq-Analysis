@@ -128,37 +128,44 @@ plot_grid(row1, legend1, rel_widths = c(2, .4))
 
 ```
 
-### Heatmap
+### Heatmap Neuron
 ```{r}
-# Neuron
+purrr::imap(li, function(obj, name) {
+  
+})
+# Subset samples for plotting
 gene_list <- gse_out$NEU$res %>% 
   filter(abs(log2FoldChange) > 2 & padj < 0.01) %>% 
   pull("ID")
 
 mat <- gse_out$NEU$vst[rownames(gse_out$NEU$vst) %in% gene_list,]
 
-meta <- colData(gse[,gse$Cell_line == "Neuron"]) %>% as.data.frame()
+meta <- colData(gse[,gse$Cell_line == "Neuron"]) %>% as.data.frame() %>% select(Condition)
 
-heatmap_palette <- paletteer_d("rcartocolor::Temps")
 
-ann_colors <- list(Condition = c(Control = "#009392FF", Patient = "#CF597EFF"))
+# Plot functions
+ha = HeatmapAnnotation(
+  Condition = anno_block(gp = gpar(fill = c("#009392FF", "#CF597EFF")),
+  labels = c("Control", "Patient"),
+  labels_gp = gpar(col = "white", fontsize = 10))
+)
 
-pheatmap(mat, 
-         color = heatmap_palette,
-         annotation_col = meta %>% select(Condition),
-         annotation_colors = ann_colors,
-         show_colnames = F, 
-         show_rownames = F,
-         scale="row")
+col_fun = paletteer_d("rcartocolor::Temps")
 
+
+# Plot heatmap
+h1 <- Heatmap(t(scale(t(mat))), 
+              top_annotation = ha,
+              col = col_fun,
+              column_km = 2,
+              row_km = 2,
+              show_row_names = FALSE,
+              show_column_names = FALSE,
+              width = unit(10, "cm"),
+              rect_gp = gpar(col = "white", lwd = 0.1),
+              name = "Scaled\nnormalized\nexpression")
 
 ```
-
-
-
-
-
-
 
 
 
