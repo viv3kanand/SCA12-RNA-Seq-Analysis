@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load packages
 ```{r}
 require(ggplot2)
-theme_set(theme_minimal())
+theme_set(theme_bw())
 require(ggpubr)
 require(tidyverse)
 require(patchwork)
@@ -45,6 +45,7 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
     ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
     geom_point(size = 3) + 
     geom_text(aes(label = Batch), hjust=0, vjust=0) +
+    ggtitle(name) +
     xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
     coord_fixed()
@@ -60,6 +61,7 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
            value = pca_result$percentVar[1:5]) %>%
     ggplot(aes(x = Components, y = value)) + 
     geom_col(fill = "#b6dfe2") + 
+    ggtitle(name) +
     ylab("% of total variance")
   
   return(p)
