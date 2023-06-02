@@ -12,7 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load packages
 ```{r}
 require(ggplot2)
-theme_set(theme_bw())
 require(ggpubr)
 require(tidyverse)
 require(patchwork)
@@ -29,6 +28,20 @@ gse_out <- readRDS("RData/gse_out.rds")
 dds <- readRDS("RData/dds.rds")
 vst_mat <- readRDS("RData/vst_bc.rds")
 ```
+
+### Custom theme to apply
+```{r}
+custom_theme <- function(){ 
+  theme_bw() +
+  theme(axis.title = element_text(size = rel(1.25)),
+        axis.text = element_text(size = rel(1.15)),
+        plot.title = element_text(size = rel(1.5),
+                                  hjust = 0.5),
+        panel.grid = element_blank(),
+        legend.position = "none")
+  }
+```
+
 
 ### PCA of Batch effect corrected and uncorrected samples
 ```{r}
@@ -48,7 +61,8 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
     ggtitle(name) +
     xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
-    coord_fixed()
+    coord_fixed() +
+    custom_theme()
 
   return(p)
 })
@@ -62,7 +76,10 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
     ggplot(aes(x = Components, y = value)) + 
     geom_col(fill = "#b6dfe2") + 
     ggtitle(name) +
-    ylab("% of total variance")
+    ylab("% of total variance") + 
+    scale_y_continuous(labels = scales::percent_format(),
+                       expand = expansion(mult = c(0, 0.01))) +
+    custom_theme()
   
   return(p)
 })
