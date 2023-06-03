@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load packages
 ```{r}
 require(ggplot2)
+require(ggrepel)
 require(ggplotify)
 require(cowplot)
 require(tidyverse)
@@ -71,6 +72,8 @@ palette1 <- c("#E64B35FF", "#417839FF")
 palette2 <- c("#FF3D7FFF", "#3FB8AFFF")
 palette3 <- c("#3A488AFF", "#BE3428FF") # paletteer_d("lisa::OskarSchlemmer")
 palette4 <- c("#CF597EFF", "#009392FF") # paletteer_d("rcartocolor::Temps")
+palette5 <- c("#CF597EFF",  "#D6D6D6FF", "#009392FF")
+
 ```
 
 
@@ -182,9 +185,27 @@ plot_heatmap <- cowplot::plot_grid(plot_list$heatmap$iPSC,
                                    nrow = 1)
 ```
 
+
 ### Volcano plot
 ```{r}
 
+
+gse_out$iPSC$res %>%
+    mutate(Expression = case_when(
+        log2FoldChange >= 2 & padj <= 0.01 ~ "Upregulated",
+        log2FoldChange <= -2 & padj <= 0.01 ~ "Downregulated",
+        TRUE ~ "Not significant")) %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(aes(color = Expression)) +
+  ggtitle("iPSC") +
+  ggrepel::geom_text_repel(data = head(gse_out$iPSC$res[order(gse_out$iPSC$res$padj),], 10),
+                            aes(label = ID)) +
+  scale_color_manual(values = palette5) +
+  scale_x_continuous(name = "Log2 fold change") +
+  scale_y_continuous(name = "-Log10 padj") +
+  geom_hline(yintercept = 2, linetype = 2, color = "black") +
+  geom_vline(xintercept = c(-2, 2), linetype = 2, color = "black") +
+  custom_theme()
 ```
 
 
