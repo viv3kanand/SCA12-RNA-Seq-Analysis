@@ -171,7 +171,7 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
                          row_km = 2, 
                          show_row_names = FALSE,
                          show_column_names = FALSE,
-                         width = unit(10, "cm"),
+                         width = unit(5, "cm"),
                          rect_gp = gpar(col = "white", lwd = 0.1),
                          name = "Scaled\nnormalized\nexpression"))
   
@@ -206,6 +206,17 @@ plot_list[["volcano"]] <- purrr::imap(gse_out, function(obj, name) {
     geom_vline(xintercept = c(-2, 2), linetype = 2, color = "black") +
     custom_theme()
 })
+
+row2 <- cowplot::plot_grid(plot_list$volcano$iPSC + theme(legend.position="none"), 
+                           plot_list$volcano$NSC + theme(legend.position="none"),
+                           plot_list$volcano$Neuron + theme(legend.position="none"),
+                           align = "hv", nrow = 1)
+
+legend2 <- get_legend(
+  plot_list$volcano$iPSC + theme(legend.box.margin = margin(0, 0, 0, 12))
+)
+
+plot_volcano <- plot_grid(row2, legend2, rel_widths = c(3, .4))
 ```
 
 
@@ -222,8 +233,16 @@ ggsave(plot = plot_pca,
 ggsave(plot = plot_heatmap,
        filename = "plots/Heatmap.png",
        bg = "white",
-       width = 20,
-       height = 10,
+       width = 15,
+       height = full_height/1.5,
+       units = meas_units,
+       dpi = res)
+
+ggsave(plot = plot_volcano,
+       filename = "plots/Volcano.png",
+       bg = "white",
+       width = 12,
+       height = full_height/2.5,
        units = meas_units,
        dpi = res)
 ```
