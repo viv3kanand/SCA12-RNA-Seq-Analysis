@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load packages
 ```{r}
 require(ggplot2)
+require(ggplotify)
 require(cowplot)
 require(tidyverse)
 require(paletteer)
@@ -118,7 +119,7 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
 
 row1 <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
                            plot_list$pca$Corrected + theme(legend.position="none"),
-                           align="hv")
+                           align = "hv")
 
 legend1 <- get_legend(
   plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
@@ -130,41 +131,50 @@ plot_grid(row1, legend1, rel_widths = c(2, .4))
 
 ### Heatmap Neuron
 ```{r}
-purrr::imap(li, function(obj, name) {
+plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
+  # Subset samples for plotting
+  gene_list <- obj[["res"]] %>% 
+    filter(abs(log2FoldChange) > 2 & padj < 0.01) %>% 
+    pull("ID")
   
-})
-# Subset samples for plotting
-gene_list <- gse_out$NEU$res %>% 
-  filter(abs(log2FoldChange) > 2 & padj < 0.01) %>% 
-  pull("ID")
+  mat <- obj[["vst"]][rownames(obj[["vst"]]) %in% gene_list,]
+  
+  meta <- colData(obj$dds) %>% as.data.frame() %>% select(Condition)
+  
+  # Plot functions
+  # color_mapping <- colorRampPalette(c("#009392FF", "#CF597EFF"))(length(unique(meta$Condition)))
+  # names(color_mapping) <- unique(meta$Condition)
+  # 
+  # ha = HeatmapAnnotation(
+  #   Condition = anno_block(gp = gpar(fill = c("#009392FF", "#CF597EFF")),
+  #   labels = c("Control", "Patient"),
+  #   labels_gp = gpar(col = "white", fontsize = 10))
+  # )
+  
+  ha <- HeatmapAnnotation(df = meta, 
+                          col = list(
+                            Condition = c("Control" = "#009392FF", "Diseased" = "#CF597EFF")))
+  
+  col_fun = paletteer_d("rcartocolor::Temps")
+  
+  
+  # Plot heatmap
+  h <- as.ggplot(Heatmap(t(scale(t(mat))), 
+                         top_annotation = ha,
+                         col = col_fun,
+                         column_title = name,
+                         column_km = 2,
+                         row_km = 2, 
+                         show_row_names = FALSE,
+                         show_column_names = FALSE,
+                         width = unit(10, "cm"),
+                         rect_gp = gpar(col = "white", lwd = 0.1),
+                         name = "Scaled\nnormalized\nexpression"))
+  
+  return(h)
+  })
 
-mat <- gse_out$NEU$vst[rownames(gse_out$NEU$vst) %in% gene_list,]
-
-meta <- colData(gse[,gse$Cell_line == "Neuron"]) %>% as.data.frame() %>% select(Condition)
-
-
-# Plot functions
-ha = HeatmapAnnotation(
-  Condition = anno_block(gp = gpar(fill = c("#009392FF", "#CF597EFF")),
-  labels = c("Control", "Patient"),
-  labels_gp = gpar(col = "white", fontsize = 10))
-)
-
-col_fun = paletteer_d("rcartocolor::Temps")
-
-
-# Plot heatmap
-h1 <- Heatmap(t(scale(t(mat))), 
-              top_annotation = ha,
-              col = col_fun,
-              column_km = 2,
-              row_km = 2,
-              show_row_names = FALSE,
-              show_column_names = FALSE,
-              width = unit(10, "cm"),
-              rect_gp = gpar(col = "white", lwd = 0.1),
-              name = "Scaled\nnormalized\nexpression")
-
+cowplot::plot_grid(plot_list$heatmap$iPSC, plot_list$heatmap$NSC, plot_list$heatmap$Neuron, align = "hv", nrow = 1)
 ```
 
 

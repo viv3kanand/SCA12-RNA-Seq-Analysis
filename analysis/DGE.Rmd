@@ -34,7 +34,7 @@ gse <- readRDS("RData/gse.rds")
 
 gse_list <- list("iPSC" = gse[,gse$Cell_line == "iPSC"],
               "NSC" = gse[,gse$Cell_line == "NSC"],
-              "NEU" = gse[,gse$Cell_line == "Neuron"])
+              "Neuron" = gse[,gse$Cell_line == "Neuron"])
 
 
 lapply(gse_list, function(se){
