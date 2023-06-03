@@ -59,6 +59,7 @@ custom_theme <- function(){
           plot.title = element_text(size = rel(1.5),
                                     hjust = 0.5),
           panel.grid = element_blank(),
+          plot.background = element_rect(fill = "white"),
           legend.position = "right",
           legend.text=element_text(size=text_size))
 }
@@ -125,7 +126,7 @@ legend1 <- get_legend(
   plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
 )
 
-plot_grid(row1, legend1, rel_widths = c(2, .4))
+plot_pca <- plot_grid(row1, legend1, rel_widths = c(2, .4))
 
 ```
 
@@ -174,10 +175,37 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
   return(h)
   })
 
-cowplot::plot_grid(plot_list$heatmap$iPSC, plot_list$heatmap$NSC, plot_list$heatmap$Neuron, align = "hv", nrow = 1)
+plot_heatmap <- cowplot::plot_grid(plot_list$heatmap$iPSC,
+                                   plot_list$heatmap$NSC,
+                                   plot_list$heatmap$Neuron,
+                                   align = "hv",
+                                   nrow = 1)
+```
+
+### Volcano plot
+```{r}
+
 ```
 
 
+### Save figures
+```{r}
+ggsave(plot = plot_pca,
+       filename = "plots/PCA.png",
+       bg = "white",
+       width = full_width,
+       height = full_height/2.5,
+       units = meas_units,
+       dpi = res)
+
+ggsave(plot = plot_heatmap,
+       filename = "plots/Heatmap.png",
+       bg = "white",
+       width = 20,
+       height = 10,
+       units = meas_units,
+       dpi = res)
+```
 
 
 
