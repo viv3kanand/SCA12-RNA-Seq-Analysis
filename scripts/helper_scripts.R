@@ -64,7 +64,7 @@ rearrangeInfReps <- function(infReps) {
 # Replicating DESeq2::plotPCA top variable genes for df and vst
 call_PCA <- function(x, ntop=500){
   require(SummarizedExperiment)
-  y <- if(is.data.frame(x)) as.matrix(x) else assay(x)
+  y <- if(is.data.frame(x)) as.matrix(x) else assay(vst(x), blind = FALSE)
   rv <- rowVars(y)
   select = order(rv, decreasing=TRUE)[seq_len(ntop)]
   
