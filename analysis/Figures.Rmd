@@ -41,7 +41,7 @@ line_size <- 0.5
 
 # Figure elements
 res <- 300
-full_width <- 8.5
+full_width <- 10
 full_height <- 13
 meas_units <- "in"
 output_filetype <- "svg"
@@ -72,7 +72,7 @@ palette1 <- c("#E64B35FF", "#417839FF")
 palette2 <- c("#FF3D7FFF", "#3FB8AFFF")
 palette3 <- c("#3A488AFF", "#BE3428FF") # paletteer_d("lisa::OskarSchlemmer")
 palette4 <- c("#CF597EFF", "#009392FF") # paletteer_d("rcartocolor::Temps")
-palette5 <- c("#CF597EFF",  "#D6D6D6FF", "#009392FF")
+palette5 <- c("#CF597EFF", "#D6D6D6FF", "#009392FF")
 
 ```
 
@@ -83,6 +83,7 @@ li <- list("Uncorrected" = dds, "Corrected" = vst_mat)
 
 coldata <- colData(dds) %>% as.data.frame()
 
+
 plot_list <- list()
 
 # PCA plot
@@ -90,22 +91,75 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
   pca_result <- call_PCA(obj)
   p <- pca_result$pca %>% 
     augment(coldata) %>%
-    ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Cell_line)) + 
+    mutate(Batch_Cell_line = interaction(Cell_line, Batch, sep="_")) %>% 
+    ggplot(aes(x=.fittedPC1, y=.fittedPC2, color=Condition, shape = Batch_Cell_line)) + 
     geom_point(size = 3) + 
-    geom_text(aes(label = Batch), hjust=0, vjust=0) +
+    #geom_text(aes(label = Batch), hjust=0, vjust=0) +
     ggtitle(name) +
     xlab(paste0("PC1: ",round(pca_result$percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(pca_result$percentVar[2] * 100),"% variance")) +
     coord_fixed() +
-    labs(shape="Cell line", colour="Condition") +
+    labs(shape="Cell line and Batch", colour="Condition") +
+    scale_shape_manual(values = c(15,16,17,1,2)) +
     scale_color_manual(name = "Condition", values = palette4) +
     custom_theme()
 
   return(p)
 })
 
+row1 <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
+                           plot_list$pca$Corrected + theme(legend.position="none"),
+                           align = "hv")
 
-# Scree plot
+legend1 <- get_legend(
+  plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
+)
+
+plot_pca <- plot_grid(row1, legend1, rel_widths = c(2, .4))
+
+```
+
+
+### PCA in base R
+```{r}
+pca <- call_PCA(dds)
+    
+df <- pca$pca %>% 
+  augment(coldata) %>% 
+  mutate(Batch_Cell_line = factor(interaction(Cell_line, Batch, sep="_")))
+
+# Create a color factor based on the Condition variable
+df$color <- as.numeric(as.factor(df$Condition))
+
+# Create separate point type factors based on the Batch and Cell_line variables
+df$pch_batch <- as.numeric(as.factor(df$Batch))
+df$pch_cell_line <- as.numeric(as.factor(df$Cell_line))
+df$pch_Batch_Cell_line <- as.numeric(as.factor(df$Batch_Cell_line))
+
+# Create a color palette and point shape vectors based on the above factors
+colors <- palette4[df$color]
+shapes <- c(15,16,17,1,2)[df$pch_Batch_Cell_line]
+
+shapes_batch <- c(1,16)[df$pch_batch]
+shapes_cell_line <- c(15,16,17)[df$pch_cell_line]
+
+# Create the base plot
+plot(df$.fittedPC1, df$.fittedPC2, pch=shapes, col=colors, 
+     xlab=paste0("PC1: ", round(pca$percentVar[1] * 100), "% variance"), 
+     ylab=paste0("PC2: ", round(pca$percentVar[2] * 100), "% variance"), 
+     main="Title", bty="n")
+
+# Create the legend
+legend("topright", legend=levels(df$Condition), fill=palette4, title="Condition")
+legend("bottomright", legend=levels(df$Batch), pch=c(1,16), title="Batch")
+legend("bottomright", legend=levels(df$Cell_line), pch=c(15,16,17), title="Cell line")
+
+```
+
+
+
+### Scree plot
+```{r}
 plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
   pca_result <- call_PCA(obj)
   p <- data.frame(Components = paste0("PC",seq_len(5)), 
@@ -120,17 +174,26 @@ plot_list[["scree"]] <- purrr::imap(li, function(obj, name) {
   
   return(p)
 })
+```
 
-row1 <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
-                           plot_list$pca$Corrected + theme(legend.position="none"),
-                           align = "hv")
-
-legend1 <- get_legend(
-  plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
-)
-
-plot_pca <- plot_grid(row1, legend1, rel_widths = c(2, .4))
-
+### PCA Loadings
+```{r}
+data.frame(pca$pca$x) %>% tibble::rownames_to_column("ID") %>%
+    select(c(1:5)) %>% 
+    pivot_longer(cols = PC1:PC4) %>% 
+    mutate(ID = tidytext::reorder_within(ID, 
+                                            abs(value), 
+                                            name)) %>%
+    ggplot(aes(abs(value), ID, fill = value > 0)) +
+    geom_col() +
+    facet_wrap(~name, scales = "free_y") +
+    tidytext::scale_y_reordered() +
+    scale_fill_manual(values = c("#009392FF", "#CF597EFF")) +
+    labs(
+        x = "Absolute value of contribution",
+        y = NULL, fill = "Positive?"
+    ) +
+      theme_minimal()
 ```
 
 ### Heatmap Neuron
@@ -225,7 +288,7 @@ plot_volcano <- plot_grid(row2, legend2, rel_widths = c(3, .4))
 ggsave(plot = plot_pca,
        filename = "plots/PCA.png",
        bg = "white",
-       width = full_width,
+       width = 10,
        height = full_height/2.5,
        units = meas_units,
        dpi = res)
