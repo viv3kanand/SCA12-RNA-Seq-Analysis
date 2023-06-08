@@ -18,6 +18,7 @@ require(cowplot)
 require(tidyverse)
 require(paletteer)
 require(broom)
+require(circlize)
 ```
 
 ### Load datasets
@@ -30,6 +31,7 @@ se_out <- readRDS("RData/se_out.rds")
 gse_out <- readRDS("RData/gse_out.rds")
 dds <- readRDS("RData/dds.rds")
 vst_mat <- readRDS("RData/vst_bc.rds")
+dti <- readRDS("RData/dti.rds")
 ```
 
 ### Custom theme to apply
@@ -44,7 +46,7 @@ res <- 300
 full_width <- 10
 full_height <- 13
 meas_units <- "in"
-output_filetype <- "svg"
+output_filetype <- "png"
 fig_lab_size <- 9
 fig_lab_pos_x <- 0
 fig_lab_pos_y <- 1
@@ -182,21 +184,20 @@ data.frame(pca$pca$x) %>% tibble::rownames_to_column("ID") %>%
     select(c(1:5)) %>% 
     pivot_longer(cols = PC1:PC4) %>% 
     mutate(ID = tidytext::reorder_within(ID, 
-                                            abs(value), 
-                                            name)) %>%
+                                         abs(value), 
+                                         name)) %>%
     ggplot(aes(abs(value), ID, fill = value > 0)) +
     geom_col() +
     facet_wrap(~name, scales = "free_y") +
     tidytext::scale_y_reordered() +
     scale_fill_manual(values = c("#009392FF", "#CF597EFF")) +
-    labs(
-        x = "Absolute value of contribution",
-        y = NULL, fill = "Positive?"
+    labs(x = "Absolute value of contribution",
+         y = NULL, fill = "Positive?"
     ) +
-      theme_minimal()
+  theme_minimal()
 ```
 
-### Heatmap Neuron
+### Heatmap
 ```{r}
 plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
   # Subset samples for plotting
@@ -220,9 +221,12 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
   
   ha <- HeatmapAnnotation(df = meta, 
                           col = list(
-                            Condition = c("Control" = "#009392FF", "Diseased" = "#CF597EFF")))
+                            Condition = c("Control" = "#009392FF", "Diseased" = "#CF597EFF")),
+                          annotation_name_side = "left",
+                          show_legend = FALSE)
   
-  col_fun = paletteer_d("rcartocolor::Temps")
+  #col_fun = paletteer_d("rcartocolor::Temps")
+  col_fun = colorRamp2(c(-2, 0, 2), c("#009392FF", "#E9E29CFF", "#CF597EFF"))
   
   
   # Plot heatmap
@@ -241,11 +245,25 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
   return(h)
   })
 
+#Legends
+lgd1 <- Legend(col_fun = col_fun, title = "Scaled\nnormalized\nexpression")
+
+lgd2 <- Legend(labels = c("Control", "Patient"), 
+               legend_gp = gpar(fill = palette4), 
+               title = "Condition")
+
+pd = packLegend(lgd1, lgd2)
+
+draw(ht_list, merge_legend = TRUE)
+
 plot_heatmap <- cowplot::plot_grid(plot_list$heatmap$iPSC,
                                    plot_list$heatmap$NSC,
                                    plot_list$heatmap$Neuron,
+                                   pd,
                                    align = "hv",
-                                   nrow = 1)
+                                   nrow = 1,
+                                   rel_widths = c(3, .4))
+
 ```
 
 
@@ -282,6 +300,43 @@ legend2 <- get_legend(
 plot_volcano <- plot_grid(row2, legend2, rel_widths = c(3, .4))
 ```
 
+
+```{r}
+dti_norm_ct <- assay(dti, "meanScaled") %>% 
+  as.data.frame() %>% 
+  cbind(., symbol = mcols(dti)[match(rownames(.), rownames(mcols(dti))), "gene_name"]) %>% 
+  mutate(symbol = str_replace(symbol, "gene-", ""))
+
+ppp2r2b <- dti_norm_ct[dti_norm_ct$symbol == "PPP2R2B",] %>% 
+  select(-c(24))
+
+
+
+meta <- colData(dti) %>% as.data.frame() %>% select(Condition, Cell_line)
+meta$Cell_line <- factor(meta$Cell_line, levels = c("Neuron", "NSC", "iPSC"))
+meta <- meta[order(meta$Cell_line, meta$Condition),]
+
+ha <- HeatmapAnnotation(df = meta, 
+                          col = list(
+                            Cell_line = c("iPSC" = "#009392FF", "NSC" = "#EEB479FF", "Neuron" = "#CF597EFF"),
+                            Condition = c("Control" = "#8785B2FF", "Diseased" = "#D95F30FF")),
+                        show_legend = TRUE)
+  
+#col_fun = paletteer_d("rcartocolor::Temps")
+
+col_fun = colorRamp2(c(-2, 0, 2), c("#009392FF", "white", "#CF597EFF"))
+
+
+Heatmap(t(scale(t(ppp2r2b[,rownames(meta)]))), 
+        top_annotation = ha,
+        col = col_fun,
+        column_title = "PPP2R2B",
+        show_row_names = TRUE,
+        show_column_names = TRUE,
+        cluster_columns = FALSE,
+        rect_gp = gpar(col = "white", lwd = 0.1),
+        name = "meanScaled\nnormalized\nexpression")
+```
 
 ### Save figures
 ```{r}

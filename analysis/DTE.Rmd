@@ -55,24 +55,11 @@ se_list <- list("iPSC" = se[,se$Cell_line == "iPSC"],
 
 ```
 
-### DTE - Fishpond - Interactive design on Cell types
-
-```{r}
-dti <- scaleInfReps(se)
-dti <- labelKeep(dti)
-dti <- dti[ mcols(dti)$keep, ]
-set.seed(666)
-dti <- swish(dti,
-         x="Condition", 
-         cov = "Cell_line",
-         nperms=30)
-
-```
 ### DTE - Fishpond - Subset analysis for each Cell types
 ```{r}
 lapply(se_list, function(se){
   se$Condition <- relevel(se$Condition, ref = "Control")
-  y <- scaleInfReps(se)
+  y <- scaleInfReps(se, saveMeanScaled = TRUE)
   y <- labelKeep(y)
   y <- y[ mcols(y)$keep, ]
   set.seed(666)
@@ -83,6 +70,22 @@ lapply(se_list, function(se){
 
 saveRDS(se_out, file = "RData/se_out.rds")
 ```
+
+
+### DTE - Fishpond - Interactive design on Cell types
+```{r}
+dti <- scaleInfReps(se, saveMeanScaled = TRUE)
+dti <- labelKeep(dti)
+dti <- dti[ mcols(dti)$keep, ]
+set.seed(666)
+dti <- swish(dti,
+         x="Condition", 
+         cov = "Cell_line",
+         nperms=30)
+
+saveRDS(dti, file = "RData/dti.rds")
+```
+
 
 ### Data for SRA
 ```{r}
