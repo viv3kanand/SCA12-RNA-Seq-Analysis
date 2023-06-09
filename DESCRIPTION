@@ -1,0 +1,37 @@
+Type: Compendium
+Package: SCA12 RNA-Seq Analysis
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.1
+Authors@R: 
+    person("Vivekanand", "A", , "first.last@example.com", role = c("aut", "cre"))
+Description: Differential gene expression and Differential Transcriptomic
+    analysis of SCA12 Patient vs Control data from iPSC, NSC and Neuronal
+    samples and figures used in the manuscript
+License: afl-3.0
+Depends: 
+    BiocParallel,
+    broom,
+    circlize,
+    ComplexHeatmap,
+    cowplot,
+    DESeq2,
+    fishpond,
+    ggplot2,
+    ggplotify,
+    ggrepel,
+    knitr,
+    limma,
+    openxlsx,
+    paletteer,
+    purrr,
+    renv,
+    rmarkdown,
+    scales,
+    stringr,
+    SummarizedExperiment,
+    tibble,
+    tidytext,
+    tidyverse,
+    tximport
+Encoding: UTF-8
+LazyData: true
