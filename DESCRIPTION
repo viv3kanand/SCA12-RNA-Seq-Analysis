@@ -35,3 +35,5 @@ Depends:
     tximport
 Encoding: UTF-8
 LazyData: true
+URL: https://github.com/viv3kanand/SCA12-RNA-Seq-Analysis
+BugReports: https://github.com/viv3kanand/SCA12-RNA-Seq-Analysis/issues
