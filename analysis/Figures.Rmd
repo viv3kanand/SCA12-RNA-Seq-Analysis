@@ -347,7 +347,7 @@ plot_list[["heatmap"]][["PPP2R2B"]] <- as.ggplot(Heatmap(t(scale(t(ppp2r2b[,rown
                                             name = "meanScaled\nnormalized\nexpression"))
 ```
 
-
+### IPA
 ```{r}
 plot_list[["ipa"]] <- purrr::imap(ipa, function(obj, name) {
   p <- obj %>% 
@@ -379,21 +379,6 @@ plot_list[["ipa"]][["merged"]] <- cowplot::plot_grid(plot_list$ipa$iPSC + theme(
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ### Save figures
@@ -435,8 +420,6 @@ plot_list$ipa$merged
 dev.off()
 
 ```
-
-
 
 
 
