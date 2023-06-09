@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Load packages
 ```{r}
+require(DESeq2)
 require(ggplot2)
 require(ggrepel)
 require(ggplotify)
@@ -19,6 +20,7 @@ require(tidyverse)
 require(paletteer)
 require(broom)
 require(circlize)
+require(ComplexHeatmap)
 ```
 
 ### Load datasets
@@ -32,6 +34,10 @@ gse_out <- readRDS("RData/gse_out.rds")
 dds <- readRDS("RData/dds.rds")
 vst_mat <- readRDS("RData/vst_bc.rds")
 dti <- readRDS("RData/dti.rds")
+
+sheets <- openxlsx::getSheetNames("../data/IPA_results.xlsx")
+ipa <- lapply(sheets, openxlsx::read.xlsx, xlsxFile="../data/IPA_results.xlsx")
+names(ipa) <- sheets
 ```
 
 ### Custom theme to apply
@@ -74,7 +80,7 @@ palette1 <- c("#E64B35FF", "#417839FF")
 palette2 <- c("#FF3D7FFF", "#3FB8AFFF")
 palette3 <- c("#3A488AFF", "#BE3428FF") # paletteer_d("lisa::OskarSchlemmer")
 palette4 <- c("#CF597EFF", "#009392FF") # paletteer_d("rcartocolor::Temps")
-palette5 <- c("#CF597EFF", "#D6D6D6FF", "#009392FF")
+palette5 <- c("#CF597EFF", "#E9E29CFF", "#009392FF")
 
 ```
 
@@ -109,7 +115,7 @@ plot_list[["pca"]] <- purrr::imap(li, function(obj, name) {
   return(p)
 })
 
-row1 <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
+pca_plot <- cowplot::plot_grid(plot_list$pca$Uncorrected + theme(legend.position="none"), 
                            plot_list$pca$Corrected + theme(legend.position="none"),
                            align = "hv")
 
@@ -117,7 +123,7 @@ legend1 <- get_legend(
   plot_list$pca$Uncorrected + theme(legend.box.margin = margin(0, 0, 0, 12))
 )
 
-plot_pca <- plot_grid(row1, legend1, rel_widths = c(2, .4))
+plot_list[["pca"]][["merged"]] <- plot_grid(pca_plot, legend1, rel_widths = c(2, .4))
 
 ```
 
@@ -226,12 +232,12 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
                           show_legend = FALSE)
   
   #col_fun = paletteer_d("rcartocolor::Temps")
-  col_fun = colorRamp2(c(-2, 0, 2), c("#009392FF", "#E9E29CFF", "#CF597EFF"))
+  col_fun = colorRamp2(c(-2, 0, 2), c("#009392FF", "white", "#CF597EFF"))
   
   
   # Plot heatmap
-  h <- as.ggplot(Heatmap(t(scale(t(mat))), 
-                         top_annotation = ha,
+  h <- Heatmap(t(scale(t(mat))), 
+               top_annotation = ha,
                          col = col_fun,
                          column_title = name,
                          column_km = 2,
@@ -240,9 +246,10 @@ plot_list[["heatmap"]] <- purrr::imap(gse_out, function(obj, name) {
                          show_column_names = FALSE,
                          width = unit(5, "cm"),
                          rect_gp = gpar(col = "white", lwd = 0.1),
-                         name = "Scaled\nnormalized\nexpression"))
+                         show_heatmap_legend = FALSE,
+                         name = "Scaled\nnormalized\nexpression")
   
-  return(h)
+  grid.grabExpr(draw(h))
   })
 
 #Legends
@@ -254,15 +261,15 @@ lgd2 <- Legend(labels = c("Control", "Patient"),
 
 pd = packLegend(lgd1, lgd2)
 
-draw(ht_list, merge_legend = TRUE)
+legend_heatmap <- grid.grabExpr(draw(pd))
 
-plot_heatmap <- cowplot::plot_grid(plot_list$heatmap$iPSC,
-                                   plot_list$heatmap$NSC,
-                                   plot_list$heatmap$Neuron,
-                                   pd,
-                                   align = "hv",
-                                   nrow = 1,
-                                   rel_widths = c(3, .4))
+plot_list[["heatmap"]][["merge"]] <- cowplot::plot_grid(plot_list$heatmap$iPSC,
+                                                        plot_list$heatmap$NSC,
+                                                        plot_list$heatmap$Neuron,
+                                                        legend_heatmap,
+                                                        align = "hv",
+                                                        nrow = 1,
+                                                        rel_widths = c(3, 0.4))
 
 ```
 
@@ -297,10 +304,12 @@ legend2 <- get_legend(
   plot_list$volcano$iPSC + theme(legend.box.margin = margin(0, 0, 0, 12))
 )
 
-plot_volcano <- plot_grid(row2, legend2, rel_widths = c(3, .4))
+plot_list[["volcano"]][["merge"]] <- cowplot::plot_grid(row2, legend2, rel_widths = c(3, .4))
+
+
 ```
 
-
+### Plot PPP2R2B transcripts
 ```{r}
 dti_norm_ct <- assay(dti, "meanScaled") %>% 
   as.data.frame() %>% 
@@ -327,16 +336,65 @@ ha <- HeatmapAnnotation(df = meta,
 col_fun = colorRamp2(c(-2, 0, 2), c("#009392FF", "white", "#CF597EFF"))
 
 
-Heatmap(t(scale(t(ppp2r2b[,rownames(meta)]))), 
-        top_annotation = ha,
-        col = col_fun,
-        column_title = "PPP2R2B",
-        show_row_names = TRUE,
-        show_column_names = TRUE,
-        cluster_columns = FALSE,
-        rect_gp = gpar(col = "white", lwd = 0.1),
-        name = "meanScaled\nnormalized\nexpression")
+plot_list[["heatmap"]][["PPP2R2B"]] <- as.ggplot(Heatmap(t(scale(t(ppp2r2b[,rownames(meta)]))),
+                                            top_annotation = ha,
+                                            col = col_fun,
+                                            column_title = "PPP2R2B Transcripts",
+                                            show_row_names = TRUE,
+                                            show_column_names = FALSE,
+                                            cluster_columns = FALSE,
+                                            rect_gp = gpar(col = "white", lwd = 0.1),
+                                            name = "meanScaled\nnormalized\nexpression"))
 ```
+
+
+```{r}
+plot_list[["ipa"]] <- purrr::imap(ipa, function(obj, name) {
+  p <- obj %>% 
+    arrange(`-log(p-value)`) %>% 
+    mutate(Ingenuity.Canonical.Pathways = factor(Ingenuity.Canonical.Pathways, 
+                                                 levels = Ingenuity.Canonical.Pathways)) %>%
+    ggplot(aes(x=`-log(p-value)`, y=Ingenuity.Canonical.Pathways, fill = `z-score`)) +
+    geom_bar(stat = "identity") +
+    ggtitle(name) +
+    xlab("-log10(p-value)") +
+    ylab("Canonical Pathways") +
+    coord_fixed() +
+    scale_fill_gradientn(colours = palette5, limits = c(-3, 3), na.value = "grey") +
+    scale_y_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) +
+    custom_theme()
+
+  return(p)
+})
+
+legend <- get_legend(
+  plot_list$ipa$NEU + theme(legend.box.margin = margin(0, 0, 0, 12))
+)
+
+plot_list[["ipa"]][["merged"]] <- cowplot::plot_grid(plot_list$ipa$iPSC + theme(legend.position="none"), 
+                               plot_list$ipa$NSC + theme(legend.position="none", axis.title.y = element_blank()),
+                               plot_list$ipa$NEU + theme(axis.title.y = element_blank()),
+                               align = "h",
+                               nrow = 1)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Save figures
 ```{r}
@@ -348,21 +406,34 @@ ggsave(plot = plot_pca,
        units = meas_units,
        dpi = res)
 
-ggsave(plot = plot_heatmap,
+ggsave(plot = plot_list$heatmap$merge,
        filename = "plots/Heatmap.png",
        bg = "white",
-       width = 15,
+       width = 13,
        height = full_height/1.5,
        units = meas_units,
        dpi = res)
 
-ggsave(plot = plot_volcano,
+ggsave(plot = plot_list$volcano$merge,
        filename = "plots/Volcano.png",
        bg = "white",
        width = 12,
        height = full_height/2.5,
        units = meas_units,
        dpi = res)
+
+ggsave(plot = plot_list$heatmap$PPP2R2B,
+       filename = "plots/PPP2R2B.png",
+       bg = "white",
+       width = 12,
+       height = full_height/2.5,
+       units = meas_units,
+       dpi = res)
+
+png("plots/ipa.png", height = 10, width = 20, res = 300, units = "in")
+plot_list$ipa$merged
+dev.off()
+
 ```
 
 
